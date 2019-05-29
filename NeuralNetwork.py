@@ -11,7 +11,7 @@ class NeuralNetwork:
         self.inp_dim = inp_dim
         self.hid_dim = hid_dim
         self.out_dim = out_dim
-        self.trainer = dy.SimpleSGDTrainer(self.model, learning_rate=0.1)
+        self.trainer = dy.SimpleSGDTrainer(self.model, learning_rate=0.05)
         self.W = self.model.add_parameters((hid_dim, inp_dim))
         self.b_bias = self.model.add_parameters((hid_dim,))
         self.U = self.model.add_parameters((out_dim, hid_dim))
@@ -33,9 +33,11 @@ class NeuralNetwork:
         x_vector = dy.inputVector(x)
         i_idx = np.argmax(x_vector)
         f = dy.tanh(self.W * x_vector + self.b_bias)
-        probs = dy.softmax(self.U * f + self.d_bias)
-        selection = np.argmax(probs.value())
-        print(self.i2w[i_idx], self.i2w[selection])
+        probs = dy.softmax(self.U * f + self.d_bias).npvalue()
+        # selection = np.argmax(probs.value())
+        selection = np.random.choice(self.inp_dim, p=probs/probs.sum())
+        print(self.i2w[selection], probs[selection])
+        return selection
 
     def train(self, X, y):
         total_loss = 0

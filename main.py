@@ -61,15 +61,40 @@ oht_outputs = to_categorical(np.array(output_idx))
 vocab_size = len(oht_inputs[0])
 
 model = NeuralNetwork(i2w=index2word, inp_dim=vocab_size,
-                      hid_dim=64, out_dim=vocab_size)
+                      hid_dim=128, out_dim=vocab_size)
 
-for i in range(50):
+for i in range(20):
+    print("ITER:", i)
     model.train(oht_inputs, oht_outputs)
 
 model.save_model()
 
 # model.load_model()
-model.predict_output(oht_inputs[word2index['<START>']])
 
+pre_idx = word2index['<START>']
+next_idx = None
+pre_idx_vector = oht_inputs[pre_idx]
+
+sentence_idx = [pre_idx]
+line_count = 0
+
+while next_idx != 1 or line_count == 3:
+
+    next_idx = model.predict_output(pre_idx_vector)
+
+    if index2word[next_idx] == "<NEWL>":
+        line_count += 1
+
+    sentence_idx.append(next_idx)
+    pre_idx_vector = oht_inputs[next_idx]
+
+
+for word_id in sentence_idx:
+    word = index2word[word_id]
+
+    if word == "<NEWL>":
+        print("")
+    else:
+        print(word, end=" ")
 
 
