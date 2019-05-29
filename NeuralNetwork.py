@@ -6,45 +6,57 @@ import numpy as np
 
 class NeuralNetwork:
 
-    def __init__(self, input_dim, hidden_dim, output_dim, learning_rate=0.001):
+    def __init__(self, i2w, inp_dim, hid_dim, out_dim):
         self.model = dy.Model()
-        self.trainer = dy.MomentumSGDTrainer(self.model, learning_rate=learning_rate)
-        self.W = self.model.add_parameters((hidden_dim, input_dim))
-        self.b_bias = self.model.add_parameters((hidden_dim,))
-        self.U = self.model.add_parameters((output_dim, hidden_dim))
-        self.d_bias = self.model.add_parameters((output_dim,))
+        self.inp_dim = inp_dim
+        self.hid_dim = hid_dim
+        self.out_dim = out_dim
+        self.trainer = dy.SimpleSGDTrainer(self.model, learning_rate=0.1)
+        self.W = self.model.add_parameters((hid_dim, inp_dim))
+        self.b_bias = self.model.add_parameters((hid_dim,))
+        self.U = self.model.add_parameters((out_dim, hid_dim))
+        self.d_bias = self.model.add_parameters((out_dim,))
+        self.i2w = i2w
 
-    # Training the network
+    def save_model(self):
+        self.model.save("dy.model")
+
+    def load_model(self):
+        self.model = dy.ParameterCollection()
+        self.W = self.model.add_parameters((self.hid_dim, self.inp_dim))
+        self.b_bias = self.model.add_parameters((self.hid_dim,))
+        self.U = self.model.add_parameters((self.out_dim, self.hid_dim))
+        self.d_bias = self.model.add_parameters((self.out_dim,))
+        self.model.populate("dy.model")
+
+    def predict_output(self, x):
+        x_vector = dy.inputVector(x)
+        i_idx = np.argmax(x_vector)
+        f = dy.tanh(self.W * x_vector + self.b_bias)
+        probs = dy.softmax(self.U * f + self.d_bias)
+        selection = np.argmax(probs.value())
+        print(self.i2w[i_idx], self.i2w[selection])
+
     def train(self, X, y):
-
-        closs = 0
-        #print(X[0])
-        # Calculation of loss for each input
+        total_loss = 0
         for inp, out in zip(X, y):
+
             i_idx = np.argmax(inp)
             o_idx = np.argmax(out)
-            print(i_idx, o_idx)
+            # print(i_idx, o_idx)
+
             dy.renew_cg()
             inp = dy.inputVector(inp)
-
-            # f is the tanh activation function in the hidden layer
             f = dy.tanh(self.W * inp + self.b_bias)
 
-            # Applying softmax and calculating loss
+            # print((self.U * f + self.d_bias).value()[o_idx])
+            # probs = dy.softmax(self.U * f + self.d_bias)
+            # selection = np.argmax(probs.value())
+            # if i_idx == 34: print("OGRENDIM", self.i2w[i_idx], self.i2w[o_idx], self.i2w[selection])
+
             loss = dy.pickneglogsoftmax(self.U * f + self.d_bias, o_idx)
-            closs += loss.npvalue()
+            total_loss += loss.npvalue()
             loss.backward()
             self.trainer.update()
 
-        print(closs/433)
-
-    # Predict method calculates probability of P(Y=y | X) for all y values
-    # def predict_proba(self, x):
-    #     x = dy.inputVector(x)
-    #     h = dy.rectify(self.W * x + self.b_bias)
-    #     logits = self.U * h
-    #
-    #     # Converting outputs to probabilities by using softmax function
-    #     temp = np.exp(logits.npvalue())
-    #     prob_lst = temp / np.sum(temp)
-    #     return prob_lst
+        print(total_loss/len(X))
