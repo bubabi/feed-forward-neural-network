@@ -44,13 +44,17 @@ class NeuralNetwork:
         for inp, out in zip(X, y):
             o_idx = np.argmax(out)
 
-            dy.renew_cg()
+            dy.renew_cg() # create a new computation graph for each input
             inp = dy.inputVector(inp)
             f = dy.tanh(self.W * inp + self.b_bias)
 
+            # calculate the softmax of probs then calculate negative log
+            # which is equivalent to: dy.pick(-dy.log(dy.softmax(self.U * f + self.d_bias)), o_idx)
             loss = dy.pickneglogsoftmax(self.U * f + self.d_bias, o_idx)
             total_loss += loss.npvalue()
 
+            # back-propagating then updating the parameters
+            # using dy.SimpleSGDTrainer
             loss.backward()
             self.trainer.update()
 
